@@ -1,0 +1,11 @@
+#!/bin/sh
+set -eu
+config=${ALIST_EMBY_ENV_FILE:-/etc/alist-emby.env}
+if [ -r "$config" ]; then
+    set -a
+    . "$config"
+    set +a
+fi
+root=${ALIST_EMBY_REMOTE_ROOT:-/opt/alist-emby}
+python=${ALIST_EMBY_PYTHON:-$root/.venv/bin/python}
+exec "$python" "$root/cinema/scripts/import_metadata.py"     --media-root "${MEDIA_ROOT:-/m3u8}"     --output "${CATALOG_OUTPUT:-/srv/alist-emby/www/cinema}"     --state-dir "${SCRAPER_STATE_PATH:-/var/lib/alist-emby/scraper}" "$@"

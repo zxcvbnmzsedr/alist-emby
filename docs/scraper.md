@@ -15,15 +15,15 @@ python3 -m venv .venv
 
 ```sh
 # 预览，不写媒体目录。
-.venv/bin/python scripts/import_metadata.py TEST_001 \
+.venv/bin/python cinema/scripts/import_metadata.py TEST_001 \
   --media-root /srv/media-hls --output ./catalog
 
 # 写入 NFO、按需封面、刷新索引。
-.venv/bin/python scripts/import_metadata.py TEST_001 --apply \
+.venv/bin/python cinema/scripts/import_metadata.py TEST_001 --apply \
   --media-root /srv/media-hls --output ./catalog
 
 # 只导入文字，不下载封面或截帧。
-.venv/bin/python scripts/import_metadata.py TEST_001 --apply --skip-cover \
+.venv/bin/python cinema/scripts/import_metadata.py TEST_001 --apply --skip-cover \
   --media-root /srv/media-hls --output ./catalog
 ```
 
@@ -40,7 +40,7 @@ python3 -m venv .venv
 `examples/metadata.json` 给出了仅包含合成资料的格式。必须包含 `facts`；编号要与 `--code` 或目录编号一致，并且有有效日期、演员和片商。
 
 ```sh
-.venv/bin/python scripts/import_metadata.py example --code TEST-001 \
+.venv/bin/python cinema/scripts/import_metadata.py example --code TEST-001 \
   --metadata-json examples/metadata.json --apply --skip-cover \
   --media-root /srv/media-hls --output ./catalog
 ```
@@ -50,10 +50,10 @@ python3 -m venv .venv
 ## 自动补封面
 
 ```sh
-.venv/bin/python scripts/import_metadata.py --list-missing-covers --media-root /srv/media-hls
-.venv/bin/python scripts/import_metadata.py --auto-cover \
+.venv/bin/python cinema/scripts/import_metadata.py --list-missing-covers --media-root /srv/media-hls
+.venv/bin/python cinema/scripts/import_metadata.py --auto-cover \
   --media-root /srv/media-hls --output ./catalog
-.venv/bin/python scripts/import_metadata.py TEST_001 --auto-cover \
+.venv/bin/python cinema/scripts/import_metadata.py TEST_001 --auto-cover \
   --media-root /srv/media-hls --output ./catalog
 ```
 
@@ -74,15 +74,15 @@ python3 -m venv .venv
 
 ```sh
 # 默认第 3 秒，仅生成预览。
-.venv/bin/python scripts/import_metadata.py TEST_001 --frame \
+.venv/bin/python cinema/scripts/import_metadata.py TEST_001 --frame \
   --media-root /srv/media-hls --output ./catalog
 
 # 指定时间，例如第 30 秒。
-.venv/bin/python scripts/import_metadata.py TEST_001 --frame 00:00:30 \
+.venv/bin/python cinema/scripts/import_metadata.py TEST_001 --frame 00:00:30 \
   --media-root /srv/media-hls --output ./catalog
 
 # 发布返回的 preview_id 对应的那一张图片。
-.venv/bin/python scripts/import_metadata.py --apply-preview PREVIEW_ID \
+.venv/bin/python cinema/scripts/import_metadata.py --apply-preview PREVIEW_ID \
   --media-root /srv/media-hls --output ./catalog
 ```
 

@@ -1,72 +1,92 @@
-# 部署、升级与回滚
+# 完整部署
 
-## 前置条件
+方案包含 AList、映库静态网页、Emby 兼容服务和入库 / 刮削 CLI。推荐 HTTPS 同源：`/cinema/` 为网页，`/emby/` 与标准根 API 为兼容服务；AList 保留 `/api/`、`/d/`、`/p/`。
 
-- Python 3.11+；服务和索引生成器都只有标准库依赖。
-- 已运行并具有可用管理员账号的 AList。
-- AList 能读取 `/m3u8/<id>/index.m3u8`，清单中的密钥和分片链接可从客户端访问。
-- 公共 HTTPS origin 同时提供 AList 和兼容接口，反向代理保留 Range/206。
+## AList 与路径
 
-推荐先使用普通 API 模式部署，再根据需要启用同机账号模式。项目没有自动安装或修改 AList。
+配置自己的云盘、本地挂载和签名访问，确保授权账号能读媒体，未签名 key 和清单被拒绝。完整流水线默认：
 
-## Linux systemd 示例
+| 文件系统目录 | AList 逻辑路径 |
+|---|---|
+| NAS `/m3u8` | `/m3u8` |
+| NAS `/srv/alist-emby/packs` | `/local/packs` |
+| 你配置的云盘挂载 | `/cloud/raw` |
 
-以下命令在已 clone 的仓库目录执行，安装到约定路径。根据现有系统修改用户、路径和 Python 可执行文件：
+每影片一个目录，包含 `index.m3u8`、可选 NFO / poster / fanart。媒体和 key 保持私有，索引输出到独立目录。已准备好的 HLS 可直接生成索引，不必重新入库。容器部署要区分宿主与容器路径，见 [媒体流程](media-pipeline.md)。
+
+## 服务器安装
+
+服务器需要 Python 3.11+、FFmpeg、ffprobe、OpenSSL。将仓库放在 `/opt/alist-emby`：
 
 ```sh
+cd /opt/alist-emby
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements-scraper.txt
 sudo useradd --system --home /var/lib/alist-emby --shell /usr/sbin/nologin alist-emby
-sudo install -d -m 0755 /opt/alist-emby /srv/alist-emby/catalog
-sudo install -m 0644 server.py /opt/alist-emby/server.py
-sudo install -m 0600 deploy/alist-emby.env.example /etc/alist-emby.env
-sudo install -m 0644 deploy/alist-emby.service /etc/systemd/system/alist-emby.service
+sudo install -d -m 0700 -o alist-emby -g alist-emby /var/lib/alist-emby
+sudo install -d /srv/alist-emby/www/cinema /srv/alist-emby/packs /m3u8
+sudo install -m 0600 .env.example /etc/alist-emby.env
+sudo install -m 0755 cinema/scripts/cinema-import /usr/local/bin/cinema-import
 ```
 
-修改 `/etc/alist-emby.env` 中的地址和路径，生成片库索引：
+编辑环境文件；服务器 CLI 需 `ALIST_TOKEN` 或只读 `ALIST_DATABASE`。CLI 运行账号须能读配置和媒体/key、写任务和索引；桥接服务只需读索引和写自己的 SQLite。按实际服务用户授予目录读取/遍历权限。
+
+`cinema-import` 与 `scripts/cloud-command` 自动读 `/etc/alist-emby.env`，可用 `ALIST_EMBY_ENV_FILE` 覆盖；其他 CLI 不自动加载，先用 `set -a; . /etc/alist-emby.env; set +a` 加载受限配置。路径变化时同步调整环境、unit 与网页配置。
+
+## 前端与索引
+
+Node.js 22.12+；可在本机构建后传到 NAS。初次部署先复制应用壳，再生成真实片库：
 
 ```sh
-sudo python3 scripts/build_catalog.py \
-  --root /srv/media-hls --output /srv/alist-emby/catalog
+cd /opt/alist-emby/cinema
+npm ci
+CINEMA_PUBLIC_DIR=../examples/cinema npm run build
+sudo cp -R dist/. /srv/alist-emby/www/cinema/
+cd /opt/alist-emby
+.venv/bin/python cinema/scripts/build_catalog.py --root /m3u8 \
+  --output /srv/alist-emby/www/cinema
+```
+
+后续前端更新复制 `index.html` 与 `assets/`，保留现有 catalog / covers。入库和刮削自动更新索引，手工修改 NFO / 图片后再运行生成器。
+
+## Emby 服务与账号
+
+```sh
+sudo install -m 0644 deploy/alist-emby.service /etc/systemd/system/alist-emby.service
 sudo systemctl daemon-reload
 sudo systemctl enable --now alist-emby
-sudo systemctl status alist-emby
+curl http://127.0.0.1:8097/emby/System/Info/Public
 ```
 
-索引及封面目录须对服务用户可读、各级目录可遍历；模板由 systemd 创建私有状态目录。媒体目录必须已作为 AList `/m3u8` 挂载。不要给兼容服务运行用户不需要的写权限。
+客户端选择 Emby，地址与 `PUBLIC_ORIGIN` 的协议、域名、外部端口一致，以 AList 管理员账号登录。普通模式向 AList 验证；同机模式同时配置 `ALIST_DATABASE` 和 `ALIST_CONFIG`，检查账号撤销并使用自身 30 天会话。
 
-将 `deploy/nginx-location.conf.example` 插入现有 AList 的 HTTPS server 块，运行 `nginx -t`，通过后 reload。若 Nginx 在 Docker 内，`127.0.0.1` 是容器自身，应配置它实际可达的宿主或服务地址，并相应调整桥接监听地址。模板中的 `Movies`、`LiveTv` 等根路由需要与同站点已有应用检查冲突。
+unit 默认 `ProtectHome=true`。AList 数据在 `/root` 时应使用可读路径或针对性调整隔离；SQLite WAL / SHM 和父目录也要有必要权限。启用后检查登录、重启与撤销。
 
-`PUBLIC_ORIGIN` 与浏览器/客户端使用的协议、域名、外部端口保持一致。如果原有 `location /` 代理 AList，继续保留；不能把 `/d/`、`/p/` 或 `/api/` 交给兼容服务。
+## HTTPS 和网页鉴权
 
-## 同机账号模式
+完整网页需 OpenResty，或加载 Lua 模块和 `cjson.safe` 的 Nginx。用 `cinema/nginx-pan.conf` 作为独立 server 模板，替换域名、TLS 证书、网页根目录与 upstream；把 `cinema/nginx-cinema-auth.lua` 安装到模板指定路径，先 `nginx -t` 再 reload。
 
-在配置中同时设置 `ALIST_DATABASE`、`ALIST_CONFIG`，授予服务用户对指定文件及父目录必要的读取/遍历权限，再重启兼容服务。不要复制管理 Token 到客户端配置。
+应用壳与 assets 公开；catalog、covers 及其余私有静态资源每次通过 AList `/api/me` 验证。`/cinema/session` 设置 HttpOnly / Secure / SameSite Cookie，`/cinema/api/fs/get` 支持 Cookie 转发。缺少 Lua 配套会失去静态数据保护。当前 AList guest role ID 按 1 拒绝，角色模型改变时需复核。
 
-模板使用非 root 用户、只读系统目录和 `ProtectHome=true`。AList 数据位于 `/root` 时该模板不能直接读取，应该选择服务可读的部署路径或有针对性地调整隔离配置。SQLite 使用 WAL 时还需确保只读连接能读取相关 WAL/SHM 文件；启用后实际验证登录、重启及账号撤销，不能仅以进程启动成功为准。
+仅用 Emby 时可用普通 Nginx 的 `deploy/nginx-location.conf.example`。容器中的 loopback 不等于宿主，配置真实可达 upstream 和桥接监听地址。标准根 API 与同站点已有应用需检查路由冲突，保留 AList 下载路由。
 
-## 验收
+## 维护与验收
+
+[入库流程](media-pipeline.md) 和 [刮削说明](scraper.md) 提供完整 CLI。在服务器加载自己的环境后：
 
 ```sh
-.venv/bin/python -m unittest discover -s tests -v
-curl https://media.example.com/emby/System/Info/Public
-sudo journalctl -u alist-emby -n 50 --no-pager
+cinema-import TEST_001 --apply
+cinema-import --auto-cover
+.venv/bin/python cinema/scripts/verify_server_auth.py
+.venv/bin/python emby_bridge/verify_live.py
+# 同机模式，有现有会话时：
+.venv/bin/python emby_bridge/verify_sessions.py
 ```
 
-公共识别接口可匿名访问。匿名或错误 Token 的 `/emby/Items?Recursive=true` 应返回 401。用真实客户端验证管理员登录、封面、播放、拖动、续播和退出；不能只以接口 200 判断可播放。
+检查匿名和无效凭据被拒绝，再验证实际账号的片库、图片、播放、拖动和跨 pack；接口 200 本身不能证明可播放。兼容检查默认不改观看记录；`--check-progress` 临时写入并恢复一条记录，运行时账号应空闲；`--write-media` 显式保存探测结果。
 
-完整测试与刮削 CLI 需安装 `requirements-scraper.txt`，见 [刮削器配置](scraper.md)。兼容服务和索引生成器本身仍只有标准库依赖。
+浏览器实播工具为 `cinema/scripts/verify_browser.mjs`。在受限本机环境设置 `CINEMA_URL`、`CINEMA_TEST_VIDEO_ID`、`CINEMA_TOKEN`，然后在 cinema 执行 `node scripts/verify_browser.mjs`。可用 `CINEMA_TEST_BOUNDARY_SECONDS` 指定已知跨 pack 时间，否则检查普通拖动；`BROWSER_EXECUTABLE` 可复用现有 Chromium。实际 Token 不写命令历史或源码。合成 UI 验证用 `npm run test:browser`，不连接 NAS。
 
-典型问题：
+## 更新与恢复
 
-| 现象 | 检查 |
-|---|---|
-| 服务没有收到客户端请求 | 地址、端口、`/emby` 基础路径及反向代理路由 |
-| 登录成功后片库为空 | 索引路径、权限、`videos` 与 `/m3u8` 路径约定 |
-| 片库有内容、封面失败 | 本地 covers 路径、文件权限、客户端图片签名传递 |
-| 清单返回 200，但播放失败 | 内部 URI、签名期限、Range、AES IV/密钥和媒体编码 |
-| 几天后普通模式返回 401 | 上游 AList 登录 Token 是否到期；重新登录或评估同机模式 |
-
-## 更新与回滚
-
-更新前运行测试，使用 SQLite 在线备份接口或停服务后备份整个状态目录；运行中的 WAL 数据库不要只复制主文件。保留上一份代码、配置和当前状态备份，替换代码后重启服务，验证片库与播放。
-
-只回滚代码时应先确认数据库结构兼容，尤其是同机模式的会话列与已迁移记录。不要用旧状态库覆盖后续观看进度。彻底停止服务时移除自己添加的兼容 API 路由，检查 Nginx 语法，再停用 systemd 单元；继续保留 AList 的原路由及媒体目录。
+保留旧代码和配置；SQLite 用在线备份或停服务备份，勿仅复制运行中的 WAL 主文件。回滚代码前确认会话结构兼容，不用旧状态覆盖后续进度。中断入库复用任务和 key；签名失效重新发布，不生成新 key 覆盖既有密文。

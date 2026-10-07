@@ -1,0 +1,5 @@
+# The login gate requires the complete coordinated configuration.
+# Use nginx-pan.conf and install nginx-cinema-auth.lua as
+# /etc/nginx/conf.d/cinema-auth.lua (inside the existing nginx-lua container).
+# Do not serve /cinema/catalog.json or /cinema/covers/ using an unguarded
+# static location. See README.md for deployment and verification commands.

@@ -1,0 +1,2 @@
+# Compatibility requirements entrypoint; the canonical list is at project root.
+-r ../../requirements-scraper.txt

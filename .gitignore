@@ -22,3 +22,12 @@ key
 *.log
 .DS_Store
 .idea/
+
+.local/
+.metadata-venv/
+dist/
+test-results/
+playwright-report/
+cinema/public/catalog.json
+cinema/public/covers/
+emby_bridge/*verification.json

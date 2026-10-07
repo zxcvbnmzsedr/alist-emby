@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<movie>
+  <title>在这里填写影片标题</title>
+  <originaltitle></originaltitle>
+  <year></year>
+  <plot>在这里填写影片简介。</plot>
+  <genre>自定义分类</genre>
+  <tag>自定义标签</tag>
+  <director></director>
+  <actor><name></name><role></role></actor>
+  <studio></studio>
+  <rating></rating>
+</movie>

@@ -4,7 +4,7 @@
 
 1. **媒体层**：准备可直接播放的 HLS，保存 AES 密钥、清单和可选本地 NFO；大体积加密分片可放在 AList 挂载的云盘。
 2. **AList 层**：负责账号登录、存储挂载、文件权限、签名下载和代理读取。兼容服务通过 `/api/auth/login`、`/api/me`、`/api/fs/get` 调用它。
-3. **协议层**：`server.py` 将片库转换为 Emby 风格 DTO，处理独立会话、图片访问和观看状态，并提供 HLS 入口。
+3. **协议层**：`emby_bridge/server.py` 将片库转换为 Emby 风格 DTO，处理独立会话、图片访问和观看状态，并提供 HLS 入口。
 
 `catalog.json` 可以重建，媒体目录是资料真值；兼容服务的 SQLite 保存会话、收藏、进度、显示偏好和图片签名私钥。兼容服务不导入 Emby 或 AList 服务端代码。独立的刮削 CLI 使用随仓库提供的 provider 库，见 [刮削器](scraper.md)。
 
@@ -59,10 +59,16 @@ sequenceDiagram
 
 进度以每秒 10,000,000 ticks 表示。`PlayedPercentage` 根据当前位置与当前片长计算，不单独持久化；停止位置达到片长的 95% 时标为已看并清空续播位置。继续观看按最近播放时间倒序排列后分页。
 
-播放源可从状态目录的可选 `media.json` 读取 `MediaStreams`，格式是以 catalog.id 为键、以包含 `MediaStreams` 的对象为值。不提供自动探测任务；无缓存时返回空流描述。
+播放源可从状态目录的可选 `media.json` 读取 `MediaStreams`，格式是以 catalog.id 为键、以包含 `MediaStreams` 的对象为值。可显式运行 `emby_bridge/verify_live.py --write-media` 探测并保存；无缓存时返回空流描述。
 
 ## 索引格式
 
 见 [合成示例](../examples/catalog.json)。必需字段为 `id`、`title`、`path` 和 `duration`（秒）。当前可播放路径须符合 `/m3u8/<目录>/index.m3u8`。`cover`、`backdrop` 必须为相对的 `covers/<文件名>.<图片扩展名>`。
 
-`scripts/build_catalog.py` 累加真实清单的 `EXTINF` 获取片长，从本地 NFO 读取白名单字段，复制本地图像并以内容哈希命名。它跳过符号链接、不下载 NFO 中的远程图片、不导出密钥或清单正文；损坏 NFO 会使构建失败并保留旧索引。输出目录必须在私有媒体目录之外，但其中索引和封面仍包含片库信息，不应作为匿名静态资源公开。
+`cinema/scripts/build_catalog.py` 累加真实清单的 `EXTINF` 获取片长，从本地 NFO 读取白名单字段，复制本地图像并以内容哈希命名。它跳过符号链接、不下载 NFO 中的远程图片、不导出密钥或清单正文；损坏 NFO 会使构建失败并保留旧索引。输出目录必须在私有媒体目录之外，但其中索引和封面仍包含片库信息，不应作为匿名静态资源公开。
+
+## 映库与入库工具
+
+`cinema/src/` 是 Vue 网页，使用 AList 账号、同源签名下载和 catalog。网页记录保存在浏览器；Emby 记录保存在桥接 SQLite，目前独立。OpenResty Lua 保护私有静态片库和封面。
+
+`inventory.py` 读取源目录，`batch_media.py` 在本机打包并通过 SSH 调度 `batch_cloud.py`。后者经 AList 上传、核验、签名和发布，再刷新共享索引。刮削与截帧在发布后补齐可选资料。见 [完整媒体流程](media-pipeline.md)。
