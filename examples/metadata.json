@@ -1,0 +1,12 @@
+{
+  "facts": {
+    "code": "TEST-001",
+    "premiered": "2026-10-07",
+    "runtime": 2,
+    "studio": "示例工作室",
+    "director": "示例导演",
+    "actors": ["示例演员"]
+  },
+  "sources": ["local"],
+  "failed_sources": []
+}

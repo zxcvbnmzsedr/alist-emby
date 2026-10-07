@@ -4,7 +4,7 @@
 
 `alist-emby` 是使用 Python 标准库实现的轻量 Emby REST API 适配服务。它将 AList 的登录、文件签名和 HLS 播放链路转换为客户端可以识别的片库、播放信息和观看进度接口。无需安装 Emby Server，也无需修改 AList 源码。
 
-本项目同时公开「本地切片加密 → 云端存储 → AList 签名播放 → Emby 客户端」方案。发布范围包含兼容服务、索引生成器、自动化测试和部署模板；云盘上传编排、网页前台和第三方刮削组件不包含在此仓库中。
+本项目同时公开「本地切片加密 → 云端存储 → AList 签名播放 → Emby 客户端」方案。发布范围包含兼容服务、索引生成器、刮削与封面工具、自动化测试和部署模板；云盘上传编排和网页前台不包含在此仓库中。
 
 ```mermaid
 flowchart LR
@@ -29,6 +29,7 @@ flowchart LR
 - 收藏、已看状态、观看进度、续播和显示偏好，保存在本地 SQLite。
 - 可选的同机 AList 账号模式，使兼容会话不受上游登录 JWT 提前到期影响。
 - 从本地媒体目录生成索引；不导出播放签名、清单正文或加密密钥。
+- JavBus / JavTrailers 元数据查询、NFO 导入、封面下载与校验；缺封面时自动从加密 HLS 截帧补图。
 
 已有部署中曾通过 Filebar iOS 验证登录、片库、播放、拖动和续播。其他客户端与其他 AList 版本需要实际验证；这不是完整的 Emby Server。
 
@@ -88,9 +89,31 @@ curl http://127.0.0.1:8097/emby/System/Info/Public
 
 最后两个变量必须一起设置。普通 API 模式下，AList 登录 Token 到期后需要重新登录；同机模式依赖特定 AList 数据表与 JWT 字段，升级 AList 后应验证兼容性。
 
+## 刮削与封面
+
+刮削工具是按需执行的 CLI，不要求运行额外网页或 HTTP 服务。安装可选依赖：
+
+```sh
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements-scraper.txt
+
+# 默认只查询和预览，--apply 才写 NFO、封面并更新索引。
+.venv/bin/python scripts/import_metadata.py TEST_001 \
+  --media-root /srv/media-hls --output ./catalog
+.venv/bin/python scripts/import_metadata.py TEST_001 --apply \
+  --media-root /srv/media-hls --output ./catalog
+
+# 缺封面列表；自动模式先刮削，失败时取第 3 秒（需要 FFmpeg 和 AList 凭据）。
+.venv/bin/python scripts/import_metadata.py --list-missing-covers --media-root /srv/media-hls
+.venv/bin/python scripts/import_metadata.py --auto-cover \
+  --media-root /srv/media-hls --output ./catalog
+```
+
+默认查询 JavBus 与 JavTrailers，成功来源之间核对编号、日期、片长和演员；已有标题、简介和封面保留。原 provider 源码一起存放在 `vendor/jav-metadata-syncer/`，来源见 [说明](vendor/jav-metadata-syncer/README.md)。来源站不可访问时明确失败，不伪造资料；也支持 `--metadata-json` 导入本地资料。完整命令、凭据配置与截帧流程见 [刮削器文档](docs/scraper.md)。
+
 ## 实现范围
 
-当前只接受 AList 管理员：索引代表完整片库，尚未实现普通账号的目录权限过滤。支持电影，不支持完整剧集、字幕轨、在线转码、后台刮削、远程遥控、管理控制台或 Emby 授权功能。开启 OTP 等额外登录挑战的账号当前无法新登录。
+当前只接受 AList 管理员：索引代表完整片库，尚未实现普通账号的目录权限过滤。支持电影，不支持完整剧集、字幕轨、在线转码、自动后台刮削、远程遥控、管理控制台或 Emby 授权功能。开启 OTP 等额外登录挑战的账号当前无法新登录。
 
 服务把清单中的 URI 转成公共绝对地址，**不会自动为每个密钥和分片补签名或更新已有签名**。在准备或发布清单时应生成正确地址；如果签名会到期，需要相应刷新机制。详见 [媒体管线](docs/media-pipeline.md)。
 
@@ -102,12 +125,13 @@ curl http://127.0.0.1:8097/emby/System/Info/Public
 - [切片、加密、云端存储与发布流程](docs/media-pipeline.md)
 - [部署、升级和回滚](docs/deployment.md)
 - [认证、会话与签名边界](docs/authentication.md)
+- [刮削、NFO 导入与截帧补封面](docs/scraper.md)
 
 ```sh
-python3 -m unittest discover -s tests -v
+.venv/bin/python -m unittest discover -s tests -v
 ```
 
-测试使用临时目录、合成数据和模拟 AList 响应，不需要真实账号或媒体。覆盖真实本地 HTTP 请求、登录与撤销、图片签名隔离、播放清单转换、进度持久化、续播排序和索引隐私边界。它们不代替真实 AList 与客户端播放验收。
+完整测试需上述刮削依赖，FFmpeg 用于合成加密 HLS 的解码测试。测试使用临时目录、合成数据和模拟 AList/资料源响应，不需要真实账号或媒体。覆盖真实本地 HTTP 请求、登录与撤销、图片签名隔离、播放清单转换、进度持久化、续播排序、NFO 与封面回滚、跨字节范围截帧和索引隐私边界。它们不代替真实 AList 与客户端播放验收。
 
 ## 许可证
 

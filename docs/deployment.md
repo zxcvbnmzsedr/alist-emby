@@ -46,12 +46,14 @@ sudo systemctl status alist-emby
 ## 验收
 
 ```sh
-python3 -m unittest discover -s tests -v
+.venv/bin/python -m unittest discover -s tests -v
 curl https://media.example.com/emby/System/Info/Public
 sudo journalctl -u alist-emby -n 50 --no-pager
 ```
 
 公共识别接口可匿名访问。匿名或错误 Token 的 `/emby/Items?Recursive=true` 应返回 401。用真实客户端验证管理员登录、封面、播放、拖动、续播和退出；不能只以接口 200 判断可播放。
+
+完整测试与刮削 CLI 需安装 `requirements-scraper.txt`，见 [刮削器配置](scraper.md)。兼容服务和索引生成器本身仍只有标准库依赖。
 
 典型问题：
 

@@ -8,7 +8,6 @@ state/
 catalog/
 work/
 outputs/
-vendor/
 node_modules/
 *.sqlite
 *.sqlite-*
