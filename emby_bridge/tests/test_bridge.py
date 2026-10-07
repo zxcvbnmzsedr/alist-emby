@@ -27,7 +27,7 @@ class BridgeTest(unittest.TestCase):
         self.video = {'id': 'example', 'title': 'Example', 'path': '/m3u8/example/index.m3u8',
                       'duration': 100, 'cover': 'covers/abc.jpg', 'actors': ['Alice'], 'tags': [],
                       'director': 'Director', 'studio': 'Studio',
-                      'addedAt': '2026-09-29T00:00:00Z'}
+                      'addedAt': '2000-01-29T00:00:00Z'}
         (root / 'catalog.json').write_text(json.dumps({'videos': [self.video]}))
         self.bridge = Bridge(root / 'catalog.json', root / 'state', 'https://media.test:7334')
         self.user = {'id': 1, 'username': 'owner', 'role': [2]}
@@ -152,14 +152,14 @@ class BridgeTest(unittest.TestCase):
 
     def test_resume_sorts_by_last_played_before_pagination(self):
         videos = [dict(self.video, id='movie-' + str(n),
-                       addedAt=f'2026-09-{n + 1:02d}T00:00:00Z') for n in range(15)]
+                       addedAt=f'2000-01-{n + 1:02d}T00:00:00Z') for n in range(15)]
         self.bridge.catalog_path.write_text(json.dumps({'videos': videos}))
         uid = self.session['uid']
         ids = [stable_id('movie:' + v['id']) for v in videos]
         for n, ident in enumerate(ids):
             self.bridge.update_userdata(uid, ident, {
                 'PlaybackPositionTicks': 42 * TICKS,
-                'LastPlayedDate': f'2026-10-{15 - n:02d}T00:00:00Z'})
+                'LastPlayedDate': f'2000-02-{15 - n:02d}T00:00:00Z'})
         for path in ['/Users/' + uid + '/Items/Resume', '/Items/Resume']:
             data = self.req(path + '?Limit=12&Recursive=true')[1]
             self.assertEqual(data['TotalRecordCount'], 15)
@@ -170,7 +170,7 @@ class BridgeTest(unittest.TestCase):
         self.assertEqual([v['Id'] for v in latest], list(reversed(ids))[:12])
 
     def test_manifest_rewrites_key_and_segment_uris_and_preserves_ranges(self):
-        raw = b'#EXTM3U\n#EXT-X-KEY:METHOD=AES-128,URI="/d/m3u8/example/key?sign=k",IV=0x01\n#EXTINF:6,\n#EXT-X-BYTERANGE:16@0\n/p/quicktv/raw/example/pack.ts\n#EXT-X-ENDLIST\n'
+        raw = b'#EXTM3U\n#EXT-X-KEY:METHOD=AES-128,URI="/d/m3u8/example/key?sign=k",IV=0x01\n#EXTINF:6,\n#EXT-X-BYTERANGE:16@0\n/p/cloud/raw/example/pack.ts\n#EXT-X-ENDLIST\n'
         class Response:
             def __enter__(self): return self
             def __exit__(self, *args): pass
@@ -179,7 +179,7 @@ class BridgeTest(unittest.TestCase):
             status, manifest = self.req('/Videos/' + self.id + '/master.m3u8')
         self.assertEqual(status, 200)
         self.assertIn(b'URI="https://media.test:7334/d/m3u8/example/key?sign=k"', manifest)
-        self.assertIn(b'\nhttps://media.test:7334/p/quicktv/raw/example/pack.ts', manifest)
+        self.assertIn(b'\nhttps://media.test:7334/p/cloud/raw/example/pack.ts', manifest)
         self.assertIn(b'#EXT-X-BYTERANGE:16@0', manifest)
 
     def test_revocation_logout_and_unsupported_mutations(self):

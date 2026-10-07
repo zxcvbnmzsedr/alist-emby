@@ -22,8 +22,8 @@ class ImportTests(unittest.TestCase):
         return {'code':'TEST-001','premiered':'2025-01-02','runtime':120,'studio':'Example','director':'Director','actors':['Actor']}
 
     def test_normalize_and_reject_traversal(self):
-        self.assertEqual(m.normalize_code('MIDA_234'), 'MIDA-234')
-        with self.assertRaises(ValueError):m.normalize_code('../MIDA_234')
+        self.assertEqual(m.normalize_code('TEST_001'), 'TEST-001')
+        with self.assertRaises(ValueError):m.normalize_code('../TEST_001')
 
     def test_code_must_match_source(self):
         with self.assertRaises(ValueError):m.basic_facts(SimpleNamespace(code='TEST-999'),'TEST-001')

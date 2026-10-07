@@ -1,6 +1,6 @@
 # 完整部署
 
-方案包含 AList、映库静态网页、Emby 兼容服务和入库 / 刮削 CLI。推荐 HTTPS 同源：`/cinema/` 为网页，`/emby/` 与标准根 API 为兼容服务；AList 保留 `/api/`、`/d/`、`/p/`。
+方案包含 AList、Web 片库静态网页、Emby 兼容服务和入库 / 刮削 CLI。推荐 HTTPS 同源：`/cinema/` 为网页，`/emby/` 与标准根 API 为兼容服务；AList 保留 `/api/`、`/d/`、`/p/`。
 
 ## AList 与路径
 

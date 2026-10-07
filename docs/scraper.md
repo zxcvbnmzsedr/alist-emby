@@ -7,7 +7,7 @@ python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements-scraper.txt
 ```
 
-工具面向 macOS / Linux，需要文件锁支持。截帧另需系统 FFmpeg。`curl_cffi` 约束在 `<0.14`，避免已观察到的 macOS 0.16.x 原生库符号加载问题；它由上游的 JavTrailers/MissAV provider 使用。
+工具面向 macOS / Linux，需要文件锁支持。截帧另需系统 FFmpeg。JavTrailers/MissAV provider 使用 `curl_cffi`；依赖版本范围由 `requirements-scraper.txt` 统一管理。
 
 当前流程调用随仓库提供的 JavBus 和 JavTrailers provider，编号格式为 `TEST_001` 或 `TEST-001` 等字母与数字编号。两个来源均成功时，编号、发布日期、时长和演员必须一致；一个来源完整成功时可采用该来源。无完整结果时不写入猜测资料。
 

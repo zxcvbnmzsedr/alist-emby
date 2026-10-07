@@ -1,6 +1,6 @@
 # 加密视频切片上传流程
 
-本说明整理自原工程 `outputs/加密视频切片上传流程.md`，保留独立短段加密与范围读取方案，并适配当前通用工具。原文件包含个人部署地址和旧任务结果，继续作为私有历史记录保留；公开说明不包含这些数据。
+使用 alist-emby 的命令行工具将视频生成独立加密短段、合并为存储包，通过 AList 上传并验证，再发布播放清单和媒体索引。
 
 ## 原理与默认值
 
@@ -22,7 +22,7 @@
 
 源视频在 NAS 时，先明确打包执行位置。可以在 NAS 上运行工具并以同机 SSH 目标调度服务端，或经授权取得工作站副本后走本机流程。远端绝对路径不属于本机文件，扫描器不会代为下载。
 
-云盘品牌由 AList 挂载决定，不依赖 QuarkTV。旧说明中的 TV 授权与代理路径仅属于旧环境；当前默认同一已配置的云盘挂载负责上传和播放代理。上传挂载必须可写，播放路径必须可读且支持 Range。
+云盘由 AList 挂载提供。同一挂载可负责上传与播放代理；上传路径必须可写，播放路径必须可读且支持 Range。
 
 ## 操作顺序
 
@@ -55,7 +55,7 @@
 .venv/bin/python scripts/batch_media.py --host YOUR_SSH_HOST --retry-failed
 ```
 
-旧任务的清单、状态和 key 位于原工作目录时，将 `ALIST_EMBY_WORK_DIR` 指向该目录，不要为了恢复重建 inventory。STOP 文件用于影片之间暂停，移除后可以继续。源目录变化时核对现有任务，只有明确开始新扫描才用 `--replace`。
+恢复任务时，将 `ALIST_EMBY_WORK_DIR` 指向保存清单、状态和 key 的工作目录，不要重建 inventory。STOP 文件用于影片之间暂停，移除后可以继续。源目录变化时核对现有任务，只有明确开始新扫描才用 `--replace`。
 
 NAS `scripts/cloud-command` 与 `cinema-import` 包装入口读取自己的 `/etc/alist-emby.env`。远程工程目录由 `ALIST_EMBY_REMOTE_ROOT` 指定；本机与服务端的 `BATCH_*` 路径必须一致。部署细节在仓库 `docs/deployment.md`，完整运行与清理在 `docs/media-pipeline.md`。
 

@@ -5,7 +5,7 @@ description: 使用 alist-emby 将指定视频切成独立加密的 HLS 短段�
 
 # AList 媒体上传
 
-使用 alist-emby 仓库已有工具完成用户指定的视频入库。先读 [上传指导](references/upload-workflow.md)，再定位仓库：优先当前工程，安装为全局 skill 时可由 `ALIST_EMBY_REPO` 指定克隆目录。仓库应包含 `scripts/batch_media.py`、`scripts/batch_cloud.py` 和 `.env.example`。
+使用 alist-emby 仓库已有工具完成用户指定的视频入库。先读 [上传指导](references/upload-workflow.md)，再定位仓库：优先使用包含上述工具的仓库目录，安装为全局 skill 时可由 `ALIST_EMBY_REPO` 指定克隆目录。仓库应包含 `scripts/batch_media.py`、`scripts/batch_cloud.py` 和 `.env.example`。
 
 ## 开始前确定
 

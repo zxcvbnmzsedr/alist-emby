@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-10-07T00:00:00Z",
+  "updatedAt": "2000-02-07T00:00:00Z",
   "videos": [
     {
       "id": "example",
@@ -8,12 +8,12 @@
       "description": "仅用于展示索引结构；本仓库不包含实际视频。",
       "path": "/m3u8/example/index.m3u8",
       "duration": 120,
-      "year": "2026",
+      "year": "2000",
       "tags": ["示例"],
       "actors": [],
       "director": "",
       "studio": "",
-      "addedAt": "2026-10-07T00:00:00Z",
+      "addedAt": "2000-02-07T00:00:00Z",
       "cover": "",
       "backdrop": ""
     }

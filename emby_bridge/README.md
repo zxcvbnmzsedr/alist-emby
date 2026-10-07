@@ -1,6 +1,6 @@
 # Emby 协议兼容服务
 
-实现位于 `server.py`，根目录 `server.py` 为兼容启动入口。Python 标准库服务读取映库索引，提供 Emby 客户端需要的识别、登录、片库、封面、HLS、进度、收藏和会话接口。
+实现位于 `server.py`，根目录 `server.py` 为兼容启动入口。Python 标准库服务读取Web 片库索引，提供 Emby 客户端需要的识别、登录、片库、封面、HLS、进度、收藏和会话接口。
 
 以 AList 管理员账号登录。普通模式向 AList 验证账号；同机模式只读 AList SQLite / config，使用桥接自身 30 天会话并检查账号撤销。观看记录保存在 `STATE_PATH` 的 SQLite 中。
 

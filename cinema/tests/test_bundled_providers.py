@@ -15,7 +15,7 @@ class BundledProviderTests(unittest.TestCase):
         from app import clients
         return clients
 
-    def movie(self, date='2026-10-07'):
+    def movie(self, date='2000-02-07'):
         return SimpleNamespace(code='TEST-001', release_date=date, runtime_minutes=120,
                                studio='Example', director='Example',
                                actresses=[SimpleNamespace(name='Example')],
@@ -39,7 +39,7 @@ class BundledProviderTests(unittest.TestCase):
         clients = self.providers()
         def provider(name):
             return SimpleNamespace(search=AsyncMock(return_value=self.movie(
-                '2026-10-07' if name == 'javbus' else '2026-10-08')))
+                '2000-02-07' if name == 'javbus' else '2000-02-08')))
         with patch.object(clients, 'get_provider', side_effect=provider), \
              self.assertRaisesRegex(ValueError, 'Conflicting premiered'):
             asyncio.run(import_metadata.fetch_facts('TEST-001'))

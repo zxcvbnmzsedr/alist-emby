@@ -67,7 +67,7 @@ sequenceDiagram
 
 `cinema/scripts/build_catalog.py` 累加真实清单的 `EXTINF` 获取片长，从本地 NFO 读取白名单字段，复制本地图像并以内容哈希命名。它跳过符号链接、不下载 NFO 中的远程图片、不导出密钥或清单正文；损坏 NFO 会使构建失败并保留旧索引。输出目录必须在私有媒体目录之外，但其中索引和封面仍包含片库信息，不应作为匿名静态资源公开。
 
-## 映库与入库工具
+## Web 片库与入库工具
 
 `cinema/src/` 是 Vue 网页，使用 AList 账号、同源签名下载和 catalog。网页记录保存在浏览器；Emby 记录保存在桥接 SQLite，目前独立。OpenResty Lua 保护私有静态片库和封面。
 

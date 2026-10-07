@@ -15,7 +15,7 @@ try {
   page.on('request', r => { if (/\/cinema\/(catalog.json|covers\/)/.test(r.url())) privateRequests.push(r.url()); });
   // No interception in this first check: production must reject anonymous data access.
   await page.goto(base + '#video=TEST_001');
-  await page.getByRole('heading', {name:'登录后进入映库'}).waitFor();
+  await page.getByRole('heading', {name:'登录后进入片库'}).waitFor();
   assert.equal(await page.locator('.movie-card,.film-info').count(), 0);
   assert.deepEqual(privateRequests, []);
   results.anonymousEntryLoadsNoPrivateData = true;
@@ -27,7 +27,7 @@ try {
 
   await page.evaluate(() => localStorage.setItem('token', 'invalid-test-token'));
   await page.reload();
-  await page.getByRole('heading', {name:'登录后进入映库'}).waitFor();
+  await page.getByRole('heading', {name:'登录后进入片库'}).waitFor();
   assert.deepEqual(privateRequests, []);
   results.invalidStoredTokenBlocked = true;
 
@@ -70,7 +70,7 @@ try {
   results.mobileLibraryNoOverflow = true;
   valid = false;
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));
-  await page.getByRole('heading', {name:'登录后进入映库'}).waitFor();
+  await page.getByRole('heading', {name:'登录后进入片库'}).waitFor();
   assert.equal(await page.locator('.movie-card,.film-info').count(), 0);
   results.mockExpiredSessionClearsLibrary = true;
   assert.deepEqual(errors, []);

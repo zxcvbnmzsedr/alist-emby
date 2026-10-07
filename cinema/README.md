@@ -1,4 +1,4 @@
-# 映库网页
+# Web 片库网页
 
 Vue 3 + Vite + ArtPlayer + hls.js 的私人媒体前端。源码在 `src/`，与 Emby 兼容服务共享 `catalog.json`，通过 AList 获取带签名的 HLS 入口。
 

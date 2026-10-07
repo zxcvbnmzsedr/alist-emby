@@ -26,7 +26,7 @@ def normalize_code(folder):
         raise ValueError('Provide one media directory name, not a path')
     match = re.fullmatch(r'([A-Za-z]{2,10})[-_](\d{2,6})(?:[ _].*)?', folder)
     if not match:
-        raise ValueError('Unsupported code format; expected e.g. MIDA_234')
+        raise ValueError('Unsupported code format; expected e.g. TEST_001')
     return f'{match[1].upper()}-{match[2]}'
 
 

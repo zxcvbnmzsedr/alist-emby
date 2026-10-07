@@ -1,14 +1,14 @@
 # alist-emby
 
-基于 AList 的完整私人媒体方案：视频离线转码与加密打包、云端上传和校验、元数据刮削、映库网页，以及供 Emby 客户端连接的协议兼容服务。
+基于 AList 的完整私人媒体方案：视频离线转码与加密打包、云端上传和校验、元数据刮削、Web 片库网页，以及供 Emby 客户端连接的协议兼容服务。
 
-本仓库包含这套方案的应用源码、入库工具、部署模板和验证脚本。映库前端位于 `cinema/src/`；Emby 兼容实现位于 `emby_bridge/server.py`。两者使用同一份影片索引。AList 和云盘由部署者自行配置。
+本仓库包含这套方案的应用源码、入库工具、部署模板和验证脚本。Web 片库前端位于 `cinema/src/`；Emby 兼容实现位于 `emby_bridge/server.py`。两者使用同一份影片索引。AList 和云盘由部署者自行配置。
 
 ## 功能与源码
 
 | 功能 | 入口 |
 |---|---|
-| 映库网页：账号登录、片库、搜索、收藏、播放、拖动、续播、移动端 | [`cinema/`](cinema/) |
+| Web 片库网页：账号登录、片库、搜索、收藏、播放、拖动、续播、移动端 | [`cinema/`](cinema/) |
 | Emby API：AList 管理员登录、会话、片库、封面、HLS、观看进度和收藏 | [`emby_bridge/`](emby_bridge/) |
 | NFO 索引、片长与封面导出 | [`cinema/scripts/build_catalog.py`](cinema/scripts/build_catalog.py) |
 | 刮削器、NFO 导入、在线封面、自动截帧和手动选帧 | [`cinema/scripts/import_metadata.py`](cinema/scripts/import_metadata.py) |
@@ -29,10 +29,10 @@
                                               ↓
                     NAS 清单 + key + NFO + 封面 → catalog
                                               ↓
-                            映库网页 / Emby 客户端播放
+                            Web 片库网页 / Emby 客户端播放
 ```
 
-根目录 `server.py` 和 `scripts/` 中的同名刮削入口保留兼容调用，实际实现集中在原有模块中。
+根目录 `server.py` 启动 Emby 兼容服务；`scripts/` 中的同名刮削入口调用 `cinema/scripts/` 中的实现。
 
 ## 安装与本地验证
 
@@ -74,7 +74,7 @@ curl http://127.0.0.1:8097/emby/System/Info/Public
 - [上传指导与代理 skill](docs/upload-guide.md)
 - [视频扫描、加密打包、云端入库和清理](docs/media-pipeline.md)
 - [刮削、NFO、封面与选帧](docs/scraper.md)
-- [映库前端说明](cinema/README.md)
+- [Web 片库前端说明](cinema/README.md)
 - [Emby 兼容范围](emby_bridge/README.md)
 - [架构与协议约定](docs/architecture.md)
 - [源码范围与私有数据排除清单](docs/source-scope.md)

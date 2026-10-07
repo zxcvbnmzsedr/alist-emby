@@ -156,13 +156,13 @@ watch(tab, () => { category.value = ''; });
 <template>
   <div class="shell">
     <header class="topbar">
-      <a class="brand" href="#" @click.prevent="closeVideo();tab='all'"><span class="brand-mark">▶</span><strong>映库</strong><span class="brand-sub">CINEMA</span></a>
-      <span class="header-note">我的私人影院</span>
+      <a class="brand" href="#" @click.prevent="closeVideo();tab='all'"><span class="brand-mark">▶</span><strong>alist-emby</strong><span class="brand-sub">MEDIA</span></a>
+      <span class="header-note">媒体资料库</span>
       <a class="drive-link" :href="alistHome" target="_blank" rel="noopener">打开 AList <span aria-hidden="true">↗</span></a>
     </header>
     <main v-if="authChecking" class="empty" role="status">正在验证登录…</main>
     <main v-else-if="!authenticated" class="auth-gate">
-      <form class="login-panel" @submit.prevent="login"><span class="eyebrow">WELCOME BACK</span><h2>登录后进入映库</h2><p>使用你的 AList 账号，登录后浏览和观看影片。</p><label for="username">账号</label><input id="username" v-model="username" autocomplete="username" required/><label for="password">密码</label><input id="password" v-model="password" type="password" autocomplete="current-password" required/><details><summary>使用动态验证码</summary><input v-model="otp" aria-label="动态验证码" inputmode="numeric" autocomplete="one-time-code" placeholder="六位验证码"/></details><p v-if="loginError" class="error-text" role="alert">{{ loginError }}</p><button class="primary" :disabled="loginBusy">{{ loginBusy ? '正在登录…' : '登录并进入' }}</button></form>
+      <form class="login-panel" @submit.prevent="login"><span class="eyebrow">WELCOME BACK</span><h2>登录后进入片库</h2><p>使用你的 AList 账号，登录后浏览和观看影片。</p><label for="username">账号</label><input id="username" v-model="username" autocomplete="username" required/><label for="password">密码</label><input id="password" v-model="password" type="password" autocomplete="current-password" required/><details><summary>使用动态验证码</summary><input v-model="otp" aria-label="动态验证码" inputmode="numeric" autocomplete="one-time-code" placeholder="六位验证码"/></details><p v-if="loginError" class="error-text" role="alert">{{ loginError }}</p><button class="primary" :disabled="loginBusy">{{ loginBusy ? '正在登录…' : '登录并进入' }}</button></form>
     </main>
     <template v-else-if="!selected">
       <section class="library-head">
@@ -205,6 +205,6 @@ watch(tab, () => { category.value = ''; });
         <aside class="film-info"><img v-if="selected.cover && !failedCovers.has(selected.id)" class="detail-cover" :src="selected.cover" :alt="selected.title+' 封面'" @error="coverFailed(selected.id)"/><p class="eyebrow">IN YOUR COLLECTION</p><h1>{{ selected.title }}</h1><div class="film-facts"><span v-if="selected.year">{{ selected.year }}</span><span>{{ formatDuration(selected.duration) }}</span></div><div v-if="selected.tags.length" class="tags"><span v-for="t in selected.tags" :key="t">{{ t }}</span></div><button class="favorite-button" :class="{saved:favorites.includes(selected.id)}" :aria-pressed="favorites.includes(selected.id)" @click="toggleFavorite(selected.id)">{{ favorites.includes(selected.id) ? '★ 已收藏' : '☆ 收藏影片' }}</button><hr/><h3>影片简介</h3><p class="description">{{ selected.description || '这部影片还没有添加简介。' }}</p><dl><template v-if="selected.actors.length"><dt>演员</dt><dd>{{ selected.actors.join(' / ') }}</dd></template><template v-if="selected.director"><dt>导演</dt><dd>{{ selected.director }}</dd></template><template v-if="selected.studio"><dt>片商</dt><dd>{{ selected.studio }}</dd></template><template v-if="selected.premiered"><dt>发行</dt><dd>{{ selected.premiered }}</dd></template><dt>编号</dt><dd>{{ selected.id }}</dd></dl></aside>
       </div>
     </main>
-    <footer><span>映库 <span class="footer-dot">/</span> 我的影像收藏</span><span>好片值得慢慢看。</span></footer>
+    <footer><span>alist-emby <span class="footer-dot">/</span> 媒体资料库</span><span>好片值得慢慢看。</span></footer>
   </div>
 </template>

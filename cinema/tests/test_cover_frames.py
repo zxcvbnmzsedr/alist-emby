@@ -28,15 +28,15 @@ class FrameTests(unittest.TestCase):
         self.addCleanup(self.tmp.cleanup)
         self.base = Path(self.tmp.name)
         self.root = self.base / 'media'
-        self.folder = self.root / 'FC2_001_中文'
+        self.folder = self.root / 'SAMPLE1_001_中文'
         self.folder.mkdir(parents=True)
         self.state = self.base / 'state'
         self.output = self.base / 'public'
         self.source = ('#EXTM3U\n#EXT-X-VERSION:4\n#EXT-X-TARGETDURATION:6\n'
                        '#EXT-X-MEDIA-SEQUENCE:0\n'
-                       '#EXT-X-KEY:METHOD=AES-128,URI="/d/m3u8/FC2_001_%E4%B8%AD%E6%96%87/key?sign=old",IV=0x00000000000000000000000000000000\n'
+                       '#EXT-X-KEY:METHOD=AES-128,URI="/d/m3u8/SAMPLE1_001_%E4%B8%AD%E6%96%87/key?sign=old",IV=0x00000000000000000000000000000000\n'
                        '#EXTINF:6,\n#EXT-X-BYTERANGE:188@0\n'
-                       '/p/cloud/raw/FC2_001_%E4%B8%AD%E6%96%87/pack_000.ts\n#EXT-X-ENDLIST\n')
+                       '/p/cloud/raw/SAMPLE1_001_%E4%B8%AD%E6%96%87/pack_000.ts\n#EXT-X-ENDLIST\n')
         (self.folder / 'index.m3u8').write_text(self.source)
         (self.folder / 'key').write_bytes(b'0123456789abcdef')
         (self.folder / 'movie.nfo').write_text('<movie><title>Manual title</title></movie>')
@@ -78,9 +78,9 @@ class FrameTests(unittest.TestCase):
         self.assertIn('#EXT-X-BYTERANGE:188@0', text)
         self.assertIn('?sign=fresh', text)
         for malicious in ('http://evil.example/media.ts', '/p/cloud/raw/other/pack_000.ts',
-                          '/p/cloud/raw/FC2_001_%E4%B8%AD%E6%96%87/../key'):
+                          '/p/cloud/raw/SAMPLE1_001_%E4%B8%AD%E6%96%87/../key'):
             with self.assertRaises(ValueError):
-                f.refresh_playlist(self.source.replace('/p/cloud/raw/FC2_001_%E4%B8%AD%E6%96%87/pack_000.ts', malicious), self.folder.name, Api())
+                f.refresh_playlist(self.source.replace('/p/cloud/raw/SAMPLE1_001_%E4%B8%AD%E6%96%87/pack_000.ts', malicious), self.folder.name, Api())
 
     def test_publish_exact_preview_and_preserve_private_source_files(self):
         ident, run, raw = self.make_preview()
@@ -108,7 +108,7 @@ class FrameTests(unittest.TestCase):
         self.assertIn('#EXT-X-BYTERANGE:188@0', text)
         self.assertIn('IV=0x00000000000000000000000000000000', text)
         for invalid in ('other', self.folder.name + '/../other'):
-            bad = source.replace('/p/alternate/raw/FC2_001_%E4%B8%AD%E6%96%87/', '/p/alternate/raw/' + quote(invalid) + '/')
+            bad = source.replace('/p/alternate/raw/SAMPLE1_001_%E4%B8%AD%E6%96%87/', '/p/alternate/raw/' + quote(invalid) + '/')
             with patch.dict(os.environ, {'ALIST_SEGMENT_ROOT': '/alternate/raw'}), self.assertRaises(ValueError):
                 f.refresh_playlist(bad, self.folder.name, Api())
 
