@@ -1,0 +1,31 @@
+[Unit]
+Description=AList Emby protocol adapter
+After=network.target
+
+[Service]
+Type=simple
+User=alist-emby
+Group=alist-emby
+WorkingDirectory=/opt/alist-emby
+ExecStart=/usr/bin/python3 /opt/alist-emby/server.py
+EnvironmentFile=/etc/alist-emby.env
+StateDirectory=alist-emby
+StateDirectoryMode=0700
+UMask=0077
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+CapabilityBoundingSet=
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+ReadWritePaths=/var/lib/alist-emby
+
+[Install]
+WantedBy=multi-user.target

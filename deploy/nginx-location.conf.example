@@ -1,0 +1,42 @@
+# Include INSIDE the existing AList HTTPS server block.
+# Keep the AList /api/, /d/, /p/ and fallback routes.
+# Adjust the upstream if Nginx runs in a container: its loopback is not the host.
+location = /emby {
+    absolute_redirect off;
+    return 302 /emby/;
+}
+location ^~ /emby/ {
+    proxy_pass http://127.0.0.1:8097;
+    proxy_http_version 1.1;
+    proxy_set_header Connection "";
+    proxy_set_header Host $http_host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_buffering off;
+    proxy_cache off;
+    proxy_read_timeout 60s;
+    client_max_body_size 64k;
+    access_log off;
+}
+# Native clients may call the standard root API paths.
+location ~* ^/(System|Users|Items|Sessions|Library|Shows|Videos|DisplayPreferences|Branding|Channels|Plugins|ScheduledTasks|Movies|LiveTv)(/|$) {
+    proxy_pass http://127.0.0.1:8097;
+    proxy_http_version 1.1;
+    proxy_set_header Connection "";
+    proxy_set_header Host $http_host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_buffering off;
+    proxy_cache off;
+    proxy_read_timeout 60s;
+    client_max_body_size 64k;
+    # Emby query strings may contain session tokens.
+    access_log off;
+}
+location = /web/manifest.json {
+    proxy_pass http://127.0.0.1:8097;
+    proxy_set_header Host $http_host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_cache off;
+    access_log off;
+}

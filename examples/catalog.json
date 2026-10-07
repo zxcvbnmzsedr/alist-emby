@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "updatedAt": "2026-10-07T00:00:00Z",
+  "videos": [
+    {
+      "id": "example",
+      "title": "示例影片（合成数据）",
+      "description": "仅用于展示索引结构；本仓库不包含实际视频。",
+      "path": "/m3u8/example/index.m3u8",
+      "duration": 120,
+      "year": "2026",
+      "tags": ["示例"],
+      "actors": [],
+      "director": "",
+      "studio": "",
+      "addedAt": "2026-10-07T00:00:00Z",
+      "cover": "",
+      "backdrop": ""
+    }
+  ]
+}
