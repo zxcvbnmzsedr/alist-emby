@@ -1,0 +1,4 @@
+interface:
+  display_name: "AList 视频加密上传"
+  short_description: "指导视频独立加密分段、云盘上传、Range 核验和播放发布流程"
+  default_prompt: "使用 $alist-media-upload 将指定视频加密入库，验证云端范围读取和播放，并保留原片。"

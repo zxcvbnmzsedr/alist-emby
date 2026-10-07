@@ -13,6 +13,7 @@
 | NFO 索引、片长与封面导出 | [`cinema/scripts/build_catalog.py`](cinema/scripts/build_catalog.py) |
 | 刮削器、NFO 导入、在线封面、自动截帧和手动选帧 | [`cinema/scripts/import_metadata.py`](cinema/scripts/import_metadata.py) |
 | 随仓提供的 JavBus / JavTrailers / MissAV provider 源码 | [`cinema/vendor/jav-metadata-syncer/`](cinema/vendor/jav-metadata-syncer/) |
+| 代理上传 skill 与上传指导 | [`.agents/skills/alist-media-upload/`](.agents/skills/alist-media-upload/)、[上传说明](docs/upload-guide.md) |
 | 视频扫描与任务清单 | [`scripts/inventory.py`](scripts/inventory.py) |
 | 本机 HLS / AES / BYTERANGE 打包、SSH 传输、断点恢复与任务调度 | [`scripts/batch_media.py`](scripts/batch_media.py) |
 | 服务端 AList 顺序上传、Range 与解码校验、签名清单发布 | [`scripts/batch_cloud.py`](scripts/batch_cloud.py) |
@@ -70,6 +71,7 @@ curl http://127.0.0.1:8097/emby/System/Info/Public
 ## 部署与使用
 
 - [完整部署与账号配置](docs/deployment.md)
+- [上传指导与代理 skill](docs/upload-guide.md)
 - [视频扫描、加密打包、云端入库和清理](docs/media-pipeline.md)
 - [刮削、NFO、封面与选帧](docs/scraper.md)
 - [映库前端说明](cinema/README.md)
