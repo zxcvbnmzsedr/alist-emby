@@ -2,6 +2,8 @@
 
 完整链路包含本机 `inventory.py` / `batch_media.py` 与 NAS `batch_cloud.py`。通过 AList 已配置的云盘挂载上传，key 和清单保留在 NAS，云盘只保存加密 pack。
 
+`index.m3u8`、密钥与 pack 的存放位置，以及 `BYTERANGE` 如何定位短段，见 [存储结构图与清单示例](storage-layout.md)。
+
 ## 路径配置
 
 | 数据 | 默认位置 / 变量 |
