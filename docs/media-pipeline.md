@@ -68,3 +68,23 @@ H.264 8bit 默认只封装，兼容 AAC 音轨保留，其他音轨转 AAC，其
 ## 签名与播放
 
 AES 保护云盘字节，授权客户端取得 key 后可以解密，不属于 DRM。桥接服务只刷新入口清单签名，对内部链接执行 `urljoin`，不会刷新内部签名。签名过期或挂载变化时，可在服务端执行 `scripts/cloud-command publish JOB_ID`，保留原 key / IV / BYTERANGE，重新发布并验证真实播放。云盘品牌不限，必须验证其实际挂载上传、代理与 Range 能力。
+
+## 外挂字幕
+
+字幕与 `index.m3u8` 放在同一个私有影片目录。例如：
+
+```text
+/m3u8/影片目录/
+  index.m3u8
+  key
+  index.zh-CN.vtt
+  index.zh-CN.srt
+```
+
+支持 UTF-8 SRT 和 WebVTT。文件名中的 `zh-CN`、`zh-TW`、`zh`、`ja`、`en` 用于识别语言。同名 SRT / VTT 合并为一条轨道，优先使用 VTT；默认优先中文字幕。符号链接和超过 8 MB 的字幕不会入库。
+
+重新生成 catalog 后，映库从 AList 获取字幕签名，默认显示字幕。播放器设置中可以关闭或切换字幕。字幕仍受私有媒体挂载的签名访问限制，catalog 只保存字幕元数据和逻辑路径。
+
+Emby 桥接服务实时发现清单同目录的字幕，在 `PlaybackInfo` 和影片详情返回外挂字幕轨道、默认字幕索引，以及标准 `Videos/{Id}/{MediaSourceId}/Subtitles/{Index}/Stream.vtt` 接口。接口验证 Emby 会话和影片访问权限，也支持 SRT、HEAD 和起始时间参数。Fileball 等客户端可以按 Emby 协议加载字幕；客户端实际显示效果仍需单独验收。
+
+字幕不烧录进视频，不改变现有 AES、IV、BYTERANGE、时长或画质。入库脚本上传字幕后需要再生成一次 catalog，使网页及时发现新增字幕。

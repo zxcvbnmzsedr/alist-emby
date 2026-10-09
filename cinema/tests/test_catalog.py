@@ -39,6 +39,18 @@ class CatalogTests(unittest.TestCase):
         self.assertEqual(video['title'], '测试 01')
         self.assertEqual(video['cover'], '')
 
+    def test_discovers_same_folder_subtitles_without_duplicate_formats(self):
+        for name in ['影片.zh-CN.srt', '影片.zh-CN.vtt', 'index.en.srt']:
+            (self.video / name).write_text('字幕测试')
+        (self.video / 'outside.ja.srt').symlink_to(self.video / 'key')
+        tracks = module.build_catalog(self.root, self.out)['videos'][0]['subtitles']
+        self.assertEqual(len(tracks), 2)
+        self.assertEqual(tracks[0]['path'], '/m3u8/测试 01/影片.zh-CN.vtt')
+        self.assertEqual(tracks[0]['language'], 'zho')
+        self.assertTrue(tracks[0]['default'])
+        self.assertFalse(tracks[1]['default'])
+        self.assertFalse((self.out / '影片.zh-CN.vtt').exists())
+
     def test_symlinks_not_exported(self):
         (self.video / 'poster.jpg').symlink_to(self.video / 'key')
         (self.root / 'another').symlink_to(self.video)

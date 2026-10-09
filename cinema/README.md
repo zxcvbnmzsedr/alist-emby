@@ -4,6 +4,8 @@ Vue 3 + Vite + ArtPlayer + hls.js 的私人媒体前端。源码在 `src/`，与
 
 支持登录、搜索标题/编号/演员、分类、收藏、继续观看、影片详情、拖动和移动端。收藏与进度保存在本机浏览器，不与桥接 SQLite 同步。登录使用 AList 账号，密码不持久化；标签页会话保存在 sessionStorage，生产环境建立 HttpOnly / Secure / SameSite Cookie。
 
+支持清单同目录的 UTF-8 SRT / WebVTT 外挂字幕。生成索引后默认加载中文字幕，播放器设置中可以关闭、切换或调整字幕偏移。字幕签名在播放时获取，索引不保存签名。
+
 ```sh
 npm ci
 # 先从自己的媒体目录生成 public/catalog.json，或从 NAS 同步：
@@ -38,3 +40,5 @@ npm run test:browser
 服务器需安装 `cinema-import` 包装入口并配置环境文件。预览状态路径可用 `--remote-state` 或 `SCRAPER_STATE_PATH` 覆盖。本机预览保存在忽略的 `outputs/`。
 
 `npm run test:browser` 自动运行合成登录与浏览测试。`verify_server_auth.py` 在自己的 HTTPS 部署上验证匿名访问、无效凭据、Cookie、封面和播放文件入口；`verify_browser.mjs` 可进一步验证实际播放、拖动、跨 pack 和续播。配置方式见部署文档，真实部署检查不在普通测试中执行。
+
+字幕浏览器测试使用 FFmpeg 生成临时测试视频，验证显示、拖动和开关。先构建并启动 `npm exec vite preview -- --host 127.0.0.1 --port 4180`，再在另一个终端执行 `node scripts/verify_subtitles.mjs`。可通过 `CINEMA_URL` 指定本地预览地址，通过 `BROWSER_EXECUTABLE` 指定已安装的 Chromium。测试使用合成账号与字幕，不读取真实媒体。

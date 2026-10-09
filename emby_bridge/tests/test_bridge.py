@@ -30,6 +30,9 @@ class BridgeTest(unittest.TestCase):
                       'addedAt': '2000-01-29T00:00:00Z'}
         (root / 'catalog.json').write_text(json.dumps({'videos': [self.video]}))
         self.bridge = Bridge(root / 'catalog.json', root / 'state', 'https://media.test:7334')
+        self.bridge.media_root = root / 'media'
+        self.subtitle_folder = self.bridge.media_root / 'example'
+        self.subtitle_folder.mkdir(parents=True)
         self.user = {'id': 1, 'username': 'owner', 'role': [2]}
         self.calls = []
 
@@ -120,6 +123,54 @@ class BridgeTest(unittest.TestCase):
         self.assertEqual(self.req('/Items?Recursive=true&api_key=' + tag, token=False)[0], 401)
         self.assertEqual(self.req('/Items/another/Images/Primary?tag=' + tag, token=False)[0], 401)
         self.assertEqual(self.req('/Users/' + self.session['uid'] + '/Items/' + self.id + '/SpecialFeatures')[1], [])
+
+    def test_external_subtitles_are_discovered_delivered_and_protected(self):
+        raw = '1\n00:00:01,000 --> 00:00:04,000\n中文字幕\n\n2\n00:00:06,000 --> 00:00:09,000\n第二句\n'
+        (self.subtitle_folder / 'example.zh-CN.srt').write_text(raw)
+        source = self.req('/Items/' + self.id + '/PlaybackInfo', 'POST', {})[1]['MediaSources'][0]
+        track = source['MediaStreams'][0]
+        self.assertEqual(track['Index'], 2)
+        self.assertEqual(source['DefaultSubtitleStreamIndex'], 2)
+        self.assertEqual(track['Type'], 'Subtitle')
+        self.assertEqual(track['Language'], 'zho')
+        self.assertTrue(track['IsExternal'])
+        self.assertEqual(track['DeliveryMethod'], 'External')
+        self.assertTrue(track['DeliveryUrl'].split('?', 1)[0].endswith('/Stream.srt'))
+        path = '/Videos/' + self.id + '/' + self.id + '/Subtitles/2/Stream.vtt'
+        status, body = self.req(path)
+        self.assertEqual(status, 200)
+        self.assertTrue(body.startswith(b'WEBVTT'))
+        self.assertIn('中文字幕'.encode(), body)
+        self.assertIn(b'00:00:01.000 --> 00:00:04.000', body)
+        self.assertEqual(self.req(path, 'HEAD')[1], b'')
+        self.assertEqual(self.req(path, token=False)[0], 401)
+        self.assertEqual(self.req(path + '?api_key=' + self.token, token=False)[1], body)
+        self.assertEqual(self.req(path.replace('/2/', '/99/'))[0], 404)
+        self.assertEqual(self.req(path.replace('/' + self.id + '/Subtitles', '/other/Subtitles'))[0], 404)
+        shifted = self.req(path + '?StartPositionTicks=50000000&CopyTimestamps=false')[1]
+        self.assertNotIn('中文字幕'.encode(), shifted)
+        self.assertIn(b'00:00:01.000 --> 00:00:04.000', shifted)
+        detail = self.req('/Items/' + self.id)[1]
+        self.assertTrue(detail['HasSubtitles'])
+        self.assertEqual(detail['MediaStreams'][0]['Index'], 2)
+        (self.subtitle_folder / 'example.zh-CN.srt').unlink()
+        self.assertEqual(self.req(path)[0], 404)
+
+    def test_subtitle_indices_preserve_av_streams_and_convert_webvtt(self):
+        (Path(self.bridge.db_path).parent / 'media.json').write_text(json.dumps({'example': {
+            'MediaStreams': [{'Index': 0, 'Type': 'Video'}, {'Index': 1, 'Type': 'Audio'}]}}))
+        (self.subtitle_folder / 'example.zh-CN.srt').write_text('重复格式')
+        (self.subtitle_folder / 'example.zh-CN.vtt').write_text('WEBVTT\n\n00:01.000 --> 00:03.000\n字幕\n')
+        (self.subtitle_folder / 'unsafe.en.srt').symlink_to(self.bridge.catalog_path)
+        source = self.req('/Items/' + self.id + '/PlaybackInfo')[1]['MediaSources'][0]
+        self.assertEqual([s['Type'] for s in source['MediaStreams']], ['Video', 'Audio', 'Subtitle'])
+        self.assertEqual(source['DefaultAudioStreamIndex'], 1)
+        self.assertEqual(source['MediaStreams'][2]['Codec'], 'webvtt')
+        self.assertTrue(source['MediaStreams'][2]['DeliveryUrl'].split('?', 1)[0].endswith('/Stream.vtt'))
+        path = '/Videos/' + self.id + '/' + self.id + '/Subtitles/2/Stream.srt'
+        self.assertIn(b'00:00:01,000 --> 00:00:03,000', self.req(path)[1])
+        shifted = self.req(path.replace('/Stream', '/10000000/Stream') + '?CopyTimestamps=false')[1]
+        self.assertIn(b'00:00:00,000 --> 00:00:02,000', shifted)
 
     def test_progress_survives_restart_favorite_and_completed(self):
         uid = self.session['uid']

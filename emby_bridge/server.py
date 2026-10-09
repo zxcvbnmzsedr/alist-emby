@@ -16,6 +16,7 @@ from pathlib import Path
 import re
 import secrets
 import sqlite3
+import sys
 import time
 import threading
 from contextlib import closing, contextmanager
@@ -24,6 +25,9 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, quote, unquote, urljoin, urlsplit
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'cinema/scripts'))
+from subtitle_sidecars import discover_subtitles, subtitle_file, convert_subtitle
 
 LOG = logging.getLogger('alist-emby')
 LIBRARY = '1'
@@ -93,9 +97,10 @@ class LocalAccounts:
 
 
 class Bridge:
-    def __init__(self, catalog, state, origin, alist='http://127.0.0.1:5244', accounts=None):
+    def __init__(self, catalog, state, origin, alist='http://127.0.0.1:5244', accounts=None, media_root=None):
         self.accounts = accounts
         self.catalog_path = Path(catalog)
+        self.media_root = Path(media_root or os.environ.get('MEDIA_ROOT', '/m3u8'))
         self.origin, self.alist = origin.rstrip('/'), alist.rstrip('/')
         Path(state).mkdir(parents=True, exist_ok=True, mode=0o700)
         self.db_path = str(Path(state) / 'state.sqlite')
@@ -315,7 +320,7 @@ class Bridge:
                 'ImageTags': images, 'BackdropImageTags': [self.image_tag(ident, 'backdrop', video)] if video.get('backdrop') else [],
                 'PrimaryImageAspectRatio': 0.67, 'UserData': self.userdata(session['uid'], ident, video),
                 'CanDownload': False, 'CanDelete': False, 'SupportsSync': False,
-                'PlayAccess': 'Full', 'IsPlaceHolder': False}
+                'PlayAccess': 'Full', 'IsPlaceHolder': False, 'HasSubtitles': bool(self.subtitle_tracks(video))}
         if str(video.get('year', '')).isdigit():
             data['ProductionYear'] = int(video['year'])
         if video.get('premiered'):
@@ -374,6 +379,51 @@ class Bridge:
             raise ApiError(502, 'Signed playback URL required')
         return self.origin + '/d' + quote(video['path'], safe='/') + '?sign=' + quote(data['sign'], safe='')
 
+    def subtitle_tracks(self, video):
+        logical = video['path'].rsplit('/', 1)[0]
+        relative = logical[len('/m3u8/'):]
+        folder = self.media_root / relative
+        if folder.is_symlink() or not folder.resolve().is_relative_to(self.media_root.resolve()) or not folder.is_dir():
+            return []
+        return discover_subtitles(folder, logical)
+
+    def media_streams(self, ident, video, token):
+        probe_path = Path(self.db_path).parent / 'media.json'
+        probe = json.loads(probe_path.read_text()).get(video['id'], {}) if probe_path.is_file() else {}
+        streams = [dict(s) for s in probe.get('MediaStreams', []) if s.get('Type') != 'Subtitle']
+        first = max([1] + [s['Index'] for s in streams]) + 1
+        for n, track in enumerate(self.subtitle_tracks(video), first):
+            delivery = f'/emby/Videos/{ident}/{ident}/Subtitles/{n}/Stream.{track["format"]}'
+            if token:
+                delivery += '?api_key=' + quote(token, safe='')
+            streams.append({'Index': n, 'Type': 'Subtitle', 'Codec': 'webvtt' if track['format'] == 'vtt' else 'srt',
+                            'Language': track['language'], 'Title': track['title'], 'DisplayTitle': track['title'],
+                            'IsDefault': track['default'], 'IsForced': False, 'IsExternal': True,
+                            'IsTextSubtitleStream': True, 'SupportsExternalStream': True,
+                            'DeliveryMethod': 'External', 'DeliveryUrl': delivery})
+        return streams
+
+    def subtitle(self, ident, source, index, output_format, session, start_ticks=0, copy_timestamps=True):
+        if source != ident:
+            raise ApiError(404, 'Media source not found')
+        video = self.video(ident)
+        # 与播放相同的影片访问权限检查。
+        self.source_url(video, session)
+        streams = self.media_streams(ident, video, '')
+        subtitles = [s for s in streams if s['Type'] == 'Subtitle']
+        selected = next((n for n, s in enumerate(subtitles) if s['Index'] == index), None)
+        if selected is None:
+            raise ApiError(404, 'Subtitle stream not found')
+        logical = video['path'].rsplit('/', 1)[0]
+        folder = self.media_root / logical[len('/m3u8/'):]
+        track = self.subtitle_tracks(video)[selected]
+        try:
+            path = subtitle_file(track, logical, folder)
+            raw = convert_subtitle(path.read_bytes(), output_format, start_ticks, copy_timestamps)
+        except (ValueError, UnicodeError, OSError):
+            raise ApiError(400, 'Subtitle unavailable or unsupported format') from None
+        return raw, 'text/vtt; charset=utf-8' if output_format == 'vtt' else 'application/x-subrip; charset=utf-8'
+
     def playback(self, ident, session, token):
         video = self.video(ident)
         # Check file permission now, rather than waiting until the first stream request.
@@ -386,12 +436,11 @@ class Bridge:
                   'IsInfiniteStream': False, 'RequiresOpening': False, 'RequiresClosing': False,
                   'DirectStreamUrl': stream, 'MediaStreams': [], 'Formats': ['hls'],
                   'RequiredHttpHeaders': {}, 'DefaultSubtitleStreamIndex': -1}
-        probe_path = Path(self.db_path).parent / 'media.json'
-        if probe_path.is_file():
-            probe = json.loads(probe_path.read_text()).get(video['id'], {})
-            source['MediaStreams'] = probe.get('MediaStreams', [])
-            if any(s['Type'] == 'Audio' for s in source['MediaStreams']):
-                source['DefaultAudioStreamIndex'] = next(s['Index'] for s in source['MediaStreams'] if s['Type'] == 'Audio')
+        source['MediaStreams'] = self.media_streams(ident, video, token)
+        if any(s['Type'] == 'Audio' for s in source['MediaStreams']):
+            source['DefaultAudioStreamIndex'] = next(s['Index'] for s in source['MediaStreams'] if s['Type'] == 'Audio')
+        source['DefaultSubtitleStreamIndex'] = next((s['Index'] for s in source['MediaStreams']
+            if s['Type'] == 'Subtitle' and s['IsDefault']), -1)
         return {'MediaSources': [source], 'PlaySessionId': secrets.token_hex(16)}
 
     def manifest(self, ident, session):
@@ -566,6 +615,7 @@ class Handler(BaseHTTPRequestHandler):
             v = b.video(ident)
             data = b.item(ident, v, s)
             data['MediaSources'] = b.playback(ident, s, token)['MediaSources']
+            data['MediaStreams'] = data['MediaSources'][0]['MediaStreams']
             return self.respond(data)
         match = re.fullmatch(r'/items/([^/]+)/images/(primary|backdrop)(?:/\d+)?', p)
         if match and read:
@@ -581,6 +631,12 @@ class Handler(BaseHTTPRequestHandler):
         match = re.fullmatch(r'/videos/([^/]+)/(?:master\.m3u8|main\.m3u8|stream(?:\.m3u8)?)', p)
         if match and read:
             return self.respond(b.manifest(match[1], s), content_type='application/vnd.apple.mpegurl')
+        match = re.fullmatch(r'/videos/([^/]+)/([^/]+)/subtitles/(\d+)(?:/(\d+))?/stream\.(vtt|srt)', p)
+        if match and read:
+            ident, source, index, position, output_format = match.groups()
+            raw, mime = b.subtitle(ident, source, int(index), output_format, s,
+                int(position or q.get('startpositionticks', 0)), q.get('copytimestamps', 'true').lower() == 'true')
+            return self.respond(raw, content_type=mime)
         if p in ('/sessions/playing', '/sessions/playing/progress', '/sessions/playing/stopped') and self.command == 'POST':
             ident = str(body.get('ItemId', ''))
             video = b.video(ident)

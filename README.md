@@ -22,8 +22,8 @@
 
 | 功能 | 入口 |
 |---|---|
-| Web 片库网页：账号登录、片库、搜索、收藏、播放、拖动、续播、移动端 | [`cinema/`](cinema/) |
-| Emby API：AList 管理员登录、会话、片库、封面、HLS、观看进度和收藏 | [`emby_bridge/`](emby_bridge/) |
+| Web 片库网页：账号登录、片库、搜索、收藏、播放、拖动、续播、外挂字幕、移动端 | [`cinema/`](cinema/) |
+| Emby API：AList 管理员登录、会话、片库、封面、HLS、字幕轨道、观看进度和收藏 | [`emby_bridge/`](emby_bridge/) |
 | NFO 索引、片长与封面导出 | [`cinema/scripts/build_catalog.py`](cinema/scripts/build_catalog.py) |
 | 刮削器、NFO 导入、在线封面、自动截帧和手动选帧 | [`cinema/scripts/import_metadata.py`](cinema/scripts/import_metadata.py) |
 | 随仓提供的 JavBus / JavTrailers / MissAV provider 源码 | [`cinema/vendor/jav-metadata-syncer/`](cinema/vendor/jav-metadata-syncer/) |
@@ -96,5 +96,7 @@ curl http://127.0.0.1:8097/emby/System/Info/Public
 Emby 客户端中选择 Emby 服务，使用你的 `PUBLIC_ORIGIN` 地址及 AList **管理员账号**登录。当前兼容服务没有完整 Emby 后台、在线转码或普通用户片库权限映射；不能代替完整 Emby Server。网页复用有效 AList 非访客账号；网页收藏和进度保存在当前浏览器，Emby 客户端记录由桥接 SQLite 保存，两种记录目前独立。
 
 清单内的 key 和分片链接需要由 AList 正确签名并可由客户端访问。桥接服务只刷新入口清单签名，不重新签发内部链接；签名过期时重新发布。Cloud 上传使用 AList 已配置的挂载，不包含任何云盘账号或自动登录工具。
+
+UTF-8 SRT / WebVTT 字幕与 `index.m3u8` 放在同一影片目录。Emby 接口返回外挂字幕轨道；网页刷新索引后默认加载中文字幕，并支持关闭、切换和偏移调整。同名 SRT / VTT 合并为一条轨道。具体约定见 [外挂字幕说明](docs/media-pipeline.md#外挂字幕)。
 
 实际视频、密钥、Token、签名链接、私人片库和封面、运行状态、日志和个人部署配置均不提交。自身代码许可证见 [LICENSE](LICENSE)；随仓的 provider 来源说明见对应目录。

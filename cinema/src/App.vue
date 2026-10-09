@@ -1,12 +1,12 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue';
-import { playbackUrl, formatDuration, filterVideos, normalizeCatalog, readLocal, writeLocal } from './library.js';
+import { playbackUrl, subtitleUrl, subtitleLabel, formatDuration, filterVideos, normalizeCatalog, readLocal, writeLocal } from './library.js';
 
 const videos = ref([]), loading = ref(true), loadError = ref(''), query = ref(''), category = ref(''), tab = ref('all'), sort = ref('new');
 const storedFavorites = readLocal('cinema.favorites', []), storedProgress = readLocal('cinema.progress', {});
 const favorites = ref(Array.isArray(storedFavorites) ? storedFavorites : []);
 const progress = ref(storedProgress && typeof storedProgress === 'object' && !Array.isArray(storedProgress) ? storedProgress : {});
-const selected = ref(null), playRequested = ref(false), playbackState = ref(''), playbackError = ref(''), playerHost = ref(null);
+const selected = ref(null), playRequested = ref(false), playbackState = ref(''), playbackError = ref(''), subtitleError = ref(''), playerHost = ref(null);
 const authenticated = ref(false), authChecking = ref(true);
 const username = ref(''), password = ref(''), otp = ref(''), loginError = ref(''), loginBusy = ref(false);
 const failedCovers = ref(new Set());
@@ -83,7 +83,7 @@ function selectFromHash() {
   const id = new URLSearchParams(location.hash.slice(1)).get('video');
   const item = videos.value.find(v => v.id === id) || null;
   if (item?.id === selected.value?.id) return;
-  stopPlayer(); selected.value = item; playbackError.value = ''; loginError.value = '';
+  stopPlayer(); selected.value = item; playbackError.value = ''; subtitleError.value = ''; loginError.value = '';
   if (item) nextTick(() => document.querySelector('.back-button')?.focus());
   else nextTick(() => focusReturn?.focus());
 }
@@ -92,11 +92,22 @@ function closeVideo() { history.replaceState(null, '', `${location.pathname}${lo
 async function play() {
   if (!authenticated.value) return;
   stopPlayer(); const run = generation; const item = selected.value; if (!item) return;
-  playRequested.value = true; playbackState.value = '正在准备播放…'; playbackError.value = '';
+  playRequested.value = true; playbackState.value = '正在准备播放…'; playbackError.value = ''; subtitleError.value = '';
   try {
     libraryPromise ||= Promise.all([import('artplayer'), import('hls.js')]);
     const [file, [{default:Artplayer}, {default:Hls}]] = await Promise.all([api('fs/get', {path:item.path, password:''}), libraryPromise]);
     if (run !== generation) return;
+    const subtitleTracks = [];
+    for (const track of item.subtitles) {
+      try {
+        const subtitleFile = await api('fs/get', {path:track.path, password:''});
+        subtitleTracks.push({...track, url:subtitleUrl(track.path, item.path, subtitleFile.sign || '')});
+      } catch {
+        subtitleError.value = '字幕暂时无法加载，可以继续观看视频。';
+      }
+      if (run !== generation) return;
+    }
+    const defaultSubtitle = subtitleTracks.find(track => track.default) || subtitleTracks[0];
     await nextTick();
     if (run !== generation || !playerHost.value) return;
     const url = playbackUrl(item.path, file.sign || '');
@@ -104,6 +115,15 @@ async function play() {
       container:playerHost.value, url, type:'m3u8', lang:'zh-cn', theme:'#efbd73', volume:0.7,
       autoplay:false, playbackRate:true, setting:true, pip:true, fullscreen:true, fullscreenWeb:true,
       playsInline:true, hotkey:true, moreVideoAttr:{playsInline:true},
+      subtitle:defaultSubtitle ? {url:defaultSubtitle.url, type:defaultSubtitle.format, escape:true} : {},
+      subtitleOffset:subtitleTracks.length > 0,
+      settings:subtitleTracks.length ? [{name:'subtitles', html:'字幕', tooltip:subtitleLabel(defaultSubtitle.title),
+        selector:[{html:'关闭字幕', url:'', default:false}, ...subtitleTracks.map(track => ({html:subtitleLabel(track.title), url:track.url, format:track.format, default:track === defaultSubtitle}))],
+        onSelect(item) {
+          player.subtitle.show = Boolean(item.url);
+          if (item.url) player.subtitle.switch(item.url, {type:item.format, escape:true});
+          return item.html;
+        }}] : [],
       customType:{ m3u8(video, source, art) {
         if (Hls.isSupported()) {
           hls = new Hls({maxBufferLength:20, backBufferLength:30, maxBufferSize:30*1024*1024});
@@ -200,6 +220,7 @@ watch(tab, () => { category.value = ''; });
           </div>
           <p v-if="playbackState" class="play-status" role="status">{{ playbackState }}</p>
           <div v-if="playbackError" class="play-error" role="alert"><span>{{ playbackError }}</span><button class="secondary" @click="play">重试播放</button></div>
+          <p v-if="subtitleError" class="error-text" role="status">{{ subtitleError }}</p>
           <div class="below-player"><span>正片</span><span>{{ formatDuration(selected.duration) }}</span></div>
         </section>
         <aside class="film-info"><img v-if="selected.cover && !failedCovers.has(selected.id)" class="detail-cover" :src="selected.cover" :alt="selected.title+' 封面'" @error="coverFailed(selected.id)"/><p class="eyebrow">IN YOUR COLLECTION</p><h1>{{ selected.title }}</h1><div class="film-facts"><span v-if="selected.year">{{ selected.year }}</span><span>{{ formatDuration(selected.duration) }}</span></div><div v-if="selected.tags.length" class="tags"><span v-for="t in selected.tags" :key="t">{{ t }}</span></div><button class="favorite-button" :class="{saved:favorites.includes(selected.id)}" :aria-pressed="favorites.includes(selected.id)" @click="toggleFavorite(selected.id)">{{ favorites.includes(selected.id) ? '★ 已收藏' : '☆ 收藏影片' }}</button><hr/><h3>影片简介</h3><p class="description">{{ selected.description || '这部影片还没有添加简介。' }}</p><dl><template v-if="selected.actors.length"><dt>演员</dt><dd>{{ selected.actors.join(' / ') }}</dd></template><template v-if="selected.director"><dt>导演</dt><dd>{{ selected.director }}</dd></template><template v-if="selected.studio"><dt>片商</dt><dd>{{ selected.studio }}</dd></template><template v-if="selected.premiered"><dt>发行</dt><dd>{{ selected.premiered }}</dd></template><dt>编号</dt><dd>{{ selected.id }}</dd></dl></aside>

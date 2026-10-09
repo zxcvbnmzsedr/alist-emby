@@ -15,6 +15,9 @@ import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from subtitle_sidecars import discover_subtitles
+
 
 def regular_within(path, root):
     return path.is_file() and not path.is_symlink() and path.resolve().is_relative_to(root.resolve())
@@ -99,6 +102,7 @@ def build_catalog(root, output):
                     addedAt=datetime.fromtimestamp(playlist.stat().st_mtime, timezone.utc).isoformat(),
                     cover=artwork(folder, ['poster', 'folder', f'{folder.name}-poster', 'index-poster'], root, output),
                     backdrop=artwork(folder, ['fanart', 'backdrop', f'{folder.name}-fanart', 'index-fanart'], root, output))
+        item['subtitles'] = discover_subtitles(folder, f'/m3u8/{folder.name}')
         videos.append(item)
     catalog = {'version': 1, 'updatedAt': datetime.now(timezone.utc).isoformat(), 'videos': videos}
     atomic_write(output / 'catalog.json', (json.dumps(catalog, ensure_ascii=False, indent=2) + '\n').encode())
