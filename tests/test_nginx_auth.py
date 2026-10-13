@@ -26,9 +26,18 @@ class AlistFixture(http.server.BaseHTTPRequestHandler):
 
     def do_GET(self):
         token = self.headers.get('Authorization')
-        roles = {'valid-token': [2], 'guest-token': [1], 'disabled-token': [2]}
+        roles = {
+            'valid-token': [2], 'numeric-admin-token': 2,
+            'numeric-user-token': 0, 'array-user-token': [0],
+            'guest-token': [1], 'numeric-guest-token': 1, 'mixed-guest-token': [2, 1],
+            'disabled-token': [2], 'numeric-disabled-token': 2,
+            'empty-role-token': [], 'missing-role-token': None,
+            'string-role-token': '2', 'string-array-token': ['2'],
+            'mixed-invalid-token': [2, '0'], 'negative-role-token': -1,
+            'fractional-role-token': 2.5,
+        }
         if self.path == '/api/me':
-            payload = {'code': 200, 'data': {'role': roles[token], 'disabled': token == 'disabled-token'}} if token in roles else {'code': 401}
+            payload = {'code': 200, 'data': {'role': roles[token], 'disabled': token in ('disabled-token', 'numeric-disabled-token')}} if token in roles else {'code': 401}
         else:
             payload = {'code': 404}
         self.send_response(200)
@@ -120,8 +129,23 @@ class NginxAuthTests(unittest.TestCase):
                 self.assertEqual(self.request(path)[0], 401)
 
     def test_invalid_guest_and_disabled_accounts_are_rejected(self):
-        for token in ('invalid-token', 'guest-token', 'disabled-token'):
-            self.assertEqual(self.request('/cinema/catalog.json', {'Authorization': token})[0], 401)
+        for token in ('invalid-token', 'guest-token', 'numeric-guest-token', 'mixed-guest-token',
+                      'disabled-token', 'numeric-disabled-token', 'empty-role-token',
+                      'missing-role-token', 'string-role-token', 'string-array-token',
+                      'mixed-invalid-token', 'negative-role-token', 'fractional-role-token'):
+            for path in ('/cinema/session', '/cinema/catalog.json'):
+                with self.subTest(token=token, path=path):
+                    self.assertEqual(self.request(path, {'Authorization': token})[0], 401)
+
+    def test_numeric_and_array_roles_establish_cookie_session(self):
+        for token in ('valid-token', 'numeric-admin-token', 'numeric-user-token', 'array-user-token'):
+            with self.subTest(token=token):
+                status, headers, body = self.request('/cinema/session', {'Authorization': token})
+                self.assertEqual(status, 200)
+                self.assertEqual(json.loads(body), {'authenticated': True})
+                cookie = headers['Set-Cookie'].split(';', 1)[0]
+                self.assertEqual(self.request('/cinema/catalog.json', {'Cookie': cookie})[0], 200)
+                self.assertEqual(self.request('/cinema/covers/example.jpg', {'Cookie': cookie})[0], 200)
 
     def test_valid_cookie_reads_private_data_and_forwards_file_request(self):
         status, headers, _ = self.request('/cinema/session', {'Authorization': 'valid-token'})

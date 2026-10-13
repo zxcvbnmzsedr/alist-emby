@@ -35,11 +35,15 @@ if data.code ~= 200 or type(data.data) ~= 'table' then
     return deny(ngx.HTTP_UNAUTHORIZED)
 end
 local user = data.data
-if user.disabled == true or user.disabled == 1 or type(user.role) ~= 'table' or #user.role == 0 then
+-- AList 的角色既可能是数字，也可能是数组；统一后再校验。
+local roles = type(user.role) == 'number' and { user.role } or user.role
+if user.disabled == true or user.disabled == 1 or type(roles) ~= 'table' or #roles == 0 then
     return deny(ngx.HTTP_UNAUTHORIZED)
 end
-for _, role in ipairs(user.role) do
-    if role == 1 then return deny(ngx.HTTP_UNAUTHORIZED) end -- AList guest role
+for _, role in ipairs(roles) do
+    if type(role) ~= 'number' or role < 0 or role % 1 ~= 0 or role == 1 then
+        return deny(ngx.HTTP_UNAUTHORIZED) -- 拒绝无效角色和 AList 访客角色。
+    end
 end
 
 if session then

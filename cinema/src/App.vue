@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue';
+import { isLibraryUser } from './auth.js';
 import { playbackUrl, subtitleUrl, subtitleLabel, formatDuration, filterVideos, normalizeCatalog, readLocal, writeLocal } from './library.js';
 
 const videos = ref([]), loading = ref(true), loadError = ref(''), query = ref(''), category = ref(''), tab = ref('all'), sort = ref('new');
@@ -41,7 +42,7 @@ async function verifySession() {
   });
   const data = response.ok ? await response.json() : null;
   const valid = import.meta.env.DEV
-    ? token && data?.code === 200 && Array.isArray(data.data?.role) && data.data.role.length > 0 && !data.data.role.includes(1) && !data.data.disabled
+    ? token && data?.code === 200 && isLibraryUser(data.data)
     : data?.authenticated === true;
   if (!valid) throw new Error('Session required');
   authenticated.value = true;

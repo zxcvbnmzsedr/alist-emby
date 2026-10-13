@@ -66,7 +66,7 @@ unit 默认 `ProtectHome=true`。AList 数据在 `/root` 时应使用可读路�
 
 完整网页需 OpenResty，或加载 Lua 模块和 `cjson.safe` 的 Nginx。用 `cinema/nginx-pan.conf` 作为独立 server 模板，替换域名、TLS 证书、网页根目录与 upstream；把 `cinema/nginx-cinema-auth.lua` 安装到模板指定路径，先 `nginx -t` 再 reload。
 
-应用壳与 assets 公开；catalog、covers 及其余私有静态资源每次通过 AList `/api/me` 验证。`/cinema/session` 设置 HttpOnly / Secure / SameSite Cookie，`/cinema/api/fs/get` 支持 Cookie 转发。缺少 Lua 配套会失去静态数据保护。当前 AList guest role ID 按 1 拒绝，角色模型改变时需复核。
+应用壳与 assets 公开；catalog、covers 及其余私有静态资源每次通过 AList `/api/me` 验证。`/cinema/session` 设置 HttpOnly / Secure / SameSite Cookie，`/cinema/api/fs/get` 支持 Cookie 转发。缺少 Lua 配套会失去静态数据保护。角色校验同时支持数字和数组，例如管理员的 `2` 和 `[2]`；拒绝访客角色 `1`、包含访客的角色数组、禁用账号和无效角色。角色模型改变时需复核。
 
 仅用 Emby 时可用普通 Nginx 的 `deploy/nginx-location.conf.example`。容器中的 loopback 不等于宿主，配置真实可达 upstream 和桥接监听地址。标准根 API 与同站点已有应用需检查路由冲突，保留 AList 下载路由。
 
